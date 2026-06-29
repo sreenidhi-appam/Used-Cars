@@ -24,8 +24,9 @@ import { API_BASE_URL } from './config';
 import { Shield, Sparkles, MapPin, Phone, Mail, Award, CarFront, Facebook, Twitter, Instagram, Smartphone } from 'lucide-react';
 
 export default function App() {
-  // Shared inventory of cars
-  const [cars, setCars] = useState<Car[]>(MOCK_CARS);
+  // Start with empty state — always load from database.
+  // MOCK_CARS used only as fallback if the server is unreachable.
+  const [cars, setCars] = useState<Car[]>([]);
 
   useEffect(() => {
     const loadCars = async () => {
@@ -38,8 +39,9 @@ export default function App() {
         console.log('Loaded cars count:', data.length);
         setCars(data);
       } catch (error) {
-        console.error('Could not load cars from backend:', error);
-        console.log('Using mock cars as fallback');
+        console.error('Could not load cars from backend, using mock data as fallback:', error);
+        // Only fall back to MOCK_CARS if the server is completely unreachable
+        setCars(MOCK_CARS);
       }
     };
 
@@ -181,7 +183,8 @@ export default function App() {
                     // Re-fetch the full car list so the state is always in sync
                     // with the database and all cars are properly formatted.
                     try {
-                      const listResponse = await fetch(`${API_BASE_URL}/api/cars`);
+                      // Use relative URL so Vite proxy routes it correctly
+                      const listResponse = await fetch('/api/cars');
                       if (listResponse.ok) {
                         const freshCars = await listResponse.json();
                         console.log('Refreshed cars count:', freshCars.length);

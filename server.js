@@ -512,6 +512,19 @@ const bootstrap = async () => {
     }
   }
 
+  // Migration: fix any absolute localhost image URLs → relative paths.
+  // This handles previously uploaded cars that were saved with absolute URLs.
+  const carsWithAbsoluteUrls = await all(db, `SELECT id, image FROM cars WHERE image LIKE 'http%/uploads/%'`);
+  for (const row of carsWithAbsoluteUrls) {
+    // Extract just the /uploads/filename part from the full URL
+    const relativeUrl = row.image.replace(/^https?:\/\/[^/]+/, '');
+    await run(db, `UPDATE cars SET image = ? WHERE id = ?`, [relativeUrl, row.id]);
+    console.log(`Migrated image URL for car ${row.id}: ${relativeUrl}`);
+  }
+  if (carsWithAbsoluteUrls.length > 0) {
+    console.log(`Fixed ${carsWithAbsoluteUrls.length} car image URL(s) to use relative paths.`);
+  }
+
   app.locals.db = db;
 
   app.get('/api/cars', async (_req, res) => {
@@ -550,10 +563,9 @@ const bootstrap = async () => {
           return res.status(400).json({ error: 'No files uploaded' });
         }
 
-        const baseUrl = `${req.protocol}://${req.get('host')}`;
-        const urls = files.map((file) => `${baseUrl}/uploads/${file.filename}`);
+        const urls = files.map((file) => `/uploads/${file.filename}`);
         
-        console.log(`Successfully uploaded ${files.length} image(s) to ${baseUrl}/uploads`);
+        console.log(`Successfully uploaded ${files.length} image(s)`);
         res.json({ urls });
       } catch (error) {
         console.error('Upload error:', error);
