@@ -146,27 +146,44 @@ export default function SellCar({ subTab: propSubTab, setSubTab: propSetSubTab, 
 
   const uploadImages = async (files: File[]) => {
     const formData = new FormData();
-    files.forEach((file) => formData.append('images', file));
+    files.forEach((file) => {
+      console.log(`Adding file: ${file.name} (${file.type}, ${file.size} bytes)`);
+      formData.append('images', file);
+    });
 
     const uploadUrl = `${API_BASE_URL}/api/cars/upload`;
-    console.log('Uploading images to:', uploadUrl);
+    console.log('API_BASE_URL:', API_BASE_URL);
+    console.log('Full upload URL:', uploadUrl);
+    console.log('Files count:', files.length);
     
     try {
+      console.log('Sending POST request to:', uploadUrl);
       const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(`Upload failed: ${response.status} - ${errorData.error || response.statusText}`);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: response.statusText };
+        }
+        const errorMsg = `Upload failed: ${response.status} - ${errorData.error || errorData || response.statusText}`;
+        console.error('Server error:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
+      console.log('Upload successful, URLs:', data.urls);
       return data.urls as string[];
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Image upload failed';
-      console.error('Upload error:', message);
+      console.error('Upload error details:', error);
       throw new Error(message);
     }
   };

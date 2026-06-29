@@ -17,8 +17,8 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
@@ -40,7 +40,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 8 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit per file
   fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith('image/')) return cb(null, true);
     cb(new Error('Only image files are allowed'));
@@ -234,23 +234,41 @@ const bootstrap = async () => {
     }
   });
 
-  app.post('/api/cars/upload', upload.array('images', 10), (req, res) => {
-    try {
-      const files = Array.isArray(req.files) ? req.files : [];
-      
-      if (files.length === 0) {
-        return res.status(400).json({ error: 'No files uploaded' });
+  app.post('/api/cars/upload', (req, res, next) => {
+    upload.array('images', 10)(req, res, (err) => {
+      if (err) {
+        console.error('Multer error:', err);
+        
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'File too large. Maximum size is 100MB per image.' });
+        }
+        if (err.code === 'LIMIT_FILE_COUNT') {
+          return res.status(400).json({ error: 'Too many files. Maximum is 10 images.' });
+        }
+        if (err.message === 'Only image files are allowed') {
+          return res.status(400).json({ error: 'Only image files (JPG, PNG, WebP, etc.) are allowed.' });
+        }
+        
+        return res.status(400).json({ error: err.message || 'File upload error' });
       }
-
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const urls = files.map((file) => `${baseUrl}/uploads/${file.filename}`);
       
-      console.log(`Successfully uploaded ${files.length} image(s) to ${baseUrl}/uploads`);
-      res.json({ urls });
-    } catch (error) {
-      console.error('Upload error:', error);
-      res.status(500).json({ error: 'Image upload failed', details: error instanceof Error ? error.message : 'Unknown error' });
-    }
+      try {
+        const files = Array.isArray(req.files) ? req.files : [];
+        
+        if (files.length === 0) {
+          return res.status(400).json({ error: 'No files uploaded' });
+        }
+
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const urls = files.map((file) => `${baseUrl}/uploads/${file.filename}`);
+        
+        console.log(`Successfully uploaded ${files.length} image(s) to ${baseUrl}/uploads`);
+        res.json({ urls });
+      } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ error: 'Image upload failed', details: error instanceof Error ? error.message : 'Unknown error' });
+      }
+    });
   });
 
   app.post('/api/cars', async (req, res) => {

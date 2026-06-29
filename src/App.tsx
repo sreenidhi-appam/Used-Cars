@@ -20,6 +20,7 @@ import DealerDashboard from './components/DealerDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import { MOCK_CARS } from './data/cars';
 import { Car } from './types';
+import { API_BASE_URL } from './config';
 import { Shield, Sparkles, MapPin, Phone, Mail, Award, CarFront, Facebook, Twitter, Instagram, Smartphone } from 'lucide-react';
 
 export default function App() {
@@ -29,12 +30,16 @@ export default function App() {
   useEffect(() => {
     const loadCars = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/cars');
-        if (!response.ok) throw new Error('Failed to fetch cars');
+        const url = `${API_BASE_URL}/api/cars`;
+        console.log('Loading cars from:', url);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch cars: ${response.status}`);
         const data = await response.json();
+        console.log('Loaded cars count:', data.length);
         setCars(data);
       } catch (error) {
         console.error('Could not load cars from backend:', error);
+        console.log('Using mock cars as fallback');
       }
     };
 
@@ -158,17 +163,27 @@ export default function App() {
                 setSubTab={setSellSubTab} 
                 onAddCar={async (newCar) => {
                   try {
-                    const response = await fetch('http://localhost:5000/api/cars', {
+                    const url = `${API_BASE_URL}/api/cars`;
+                    console.log('Adding car to:', url);
+                    console.log('Car data:', newCar);
+                    
+                    const response = await fetch(url, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(newCar)
                     });
 
-                    if (!response.ok) throw new Error('Unable to save car');
+                    if (!response.ok) {
+                      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                      throw new Error(`Unable to save car: ${response.status} - ${errorData.error || response.statusText}`);
+                    }
+                    
                     const savedCar = await response.json();
+                    console.log('Car saved successfully:', savedCar);
                     setCars(prev => [savedCar, ...prev]);
                   } catch (error) {
                     console.error('Could not save car to backend:', error);
+                    alert(`Failed to save car: ${error instanceof Error ? error.message : 'Unknown error'}`);
                   }
 
                   setFilters({
