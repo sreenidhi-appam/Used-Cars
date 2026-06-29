@@ -237,12 +237,19 @@ const bootstrap = async () => {
   app.post('/api/cars/upload', upload.array('images', 10), (req, res) => {
     try {
       const files = Array.isArray(req.files) ? req.files : [];
+      
+      if (files.length === 0) {
+        return res.status(400).json({ error: 'No files uploaded' });
+      }
+
       const baseUrl = `${req.protocol}://${req.get('host')}`;
       const urls = files.map((file) => `${baseUrl}/uploads/${file.filename}`);
+      
+      console.log(`Successfully uploaded ${files.length} image(s) to ${baseUrl}/uploads`);
       res.json({ urls });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: 'Image upload failed' });
+      console.error('Upload error:', error);
+      res.status(500).json({ error: 'Image upload failed', details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

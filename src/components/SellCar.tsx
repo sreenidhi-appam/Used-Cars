@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BadgePercent, Shield, Scale, Calculator, CalendarCheck, CheckSquare, Sparkles, AlertCircle, FileText, ChevronRight, Star, Upload, Camera, ChevronLeft, ArrowRight, DollarSign, User, Mail, Phone, MapPin, Trash2 } from 'lucide-react';
 import { ValuationResult, Car } from '../types';
+import { API_BASE_URL } from '../config';
 
 interface SellCarProps {
   subTab?: 'valuation' | 'sell' | 'inspection';
@@ -147,17 +148,27 @@ export default function SellCar({ subTab: propSubTab, setSubTab: propSetSubTab, 
     const formData = new FormData();
     files.forEach((file) => formData.append('images', file));
 
-    const response = await fetch('http://localhost:5000/api/cars/upload', {
-      method: 'POST',
-      body: formData
-    });
+    const uploadUrl = `${API_BASE_URL}/api/cars/upload`;
+    console.log('Uploading images to:', uploadUrl);
+    
+    try {
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData
+      });
 
-    if (!response.ok) {
-      throw new Error('Image upload failed');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(`Upload failed: ${response.status} - ${errorData.error || response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.urls as string[];
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Image upload failed';
+      console.error('Upload error:', message);
+      throw new Error(message);
     }
-
-    const data = await response.json();
-    return data.urls as string[];
   };
 
   const handleInspectionSubmission = (e: React.FormEvent) => {
@@ -746,8 +757,9 @@ export default function SellCar({ subTab: propSubTab, setSubTab: propSetSubTab, 
                               const uploadedUrls = await uploadImages(validFiles);
                               setSellImages(prev => [...prev, ...uploadedUrls]);
                             } catch (error) {
-                              console.error('Upload failed:', error);
-                              alert('Image upload failed. Please try again.');
+                              const errorMsg = error instanceof Error ? error.message : 'Image upload failed. Please try again.';
+                              console.error('Upload failed:', errorMsg);
+                              alert(`Upload failed: ${errorMsg}\n\nMake sure the server is running with "npm run dev:full" or "npm run server".`);
                             }
                           }}
                           className={`border-2 border-dashed rounded-3xl p-6.5 text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
@@ -773,8 +785,9 @@ export default function SellCar({ subTab: propSubTab, setSubTab: propSetSubTab, 
                                   const uploadedUrls = await uploadImages(validFiles);
                                   setSellImages(prev => [...prev, ...uploadedUrls]);
                                 } catch (error) {
-                                  console.error('Upload failed:', error);
-                                  alert('Image upload failed. Please try again.');
+                                  const errorMsg = error instanceof Error ? error.message : 'Image upload failed. Please try again.';
+                                  console.error('Upload failed:', errorMsg);
+                                  alert(`Upload failed: ${errorMsg}\n\nMake sure the server is running with "npm run dev:full" or "npm run server".`);
                                 }
                               }
                             }}
