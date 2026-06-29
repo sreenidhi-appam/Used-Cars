@@ -227,9 +227,10 @@ const bootstrap = async () => {
   app.get('/api/cars', async (_req, res) => {
     try {
       const rows = await all(db, 'SELECT * FROM cars ORDER BY createdAt DESC');
+      console.log(`Returning ${rows.length} cars from database`);
       res.json(rows.map(rowToCar));
     } catch (error) {
-      console.error(error);
+      console.error('Error fetching cars:', error);
       res.status(500).json({ error: 'Unable to load cars' });
     }
   });
@@ -276,6 +277,9 @@ const bootstrap = async () => {
       const car = req.body;
       const id = car.id || `car-custom-${Date.now()}`;
       const now = new Date().toISOString();
+      
+      console.log(`Inserting new car: ${car.brand} ${car.model} (ID: ${id})`);
+      
       await run(db, `
         INSERT INTO cars (id, brand, model, year, price, mileage, fuelType, transmission, bodyType, isCertified, image, power, engine, owners, color, rating, features, location, formattedPrice, seating, createdAt)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -303,9 +307,13 @@ const bootstrap = async () => {
         now
       ]);
 
+      console.log(`Car inserted successfully. Total cars in database:`);
+      const countResult = await all(db, 'SELECT COUNT(*) as count FROM cars');
+      console.log(`  ${countResult[0].count} cars`);
+      
       res.status(201).json({ ...car, id, createdAt: now });
     } catch (error) {
-      console.error(error);
+      console.error('Error saving car:', error);
       res.status(500).json({ error: 'Unable to save car listing' });
     }
   });
