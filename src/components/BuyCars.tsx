@@ -98,6 +98,16 @@ export default function BuyCars({
     return Array.from(new Set(cars.map(c => c.brand)));
   }, [cars]);
 
+  const handleOpenCarDetail = (car: Car) => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim()) {
+      selection.removeAllRanges();
+      return;
+    }
+
+    setSelectedCarDetail(car);
+  };
+
   const handleResetFilters = () => {
     const defaultFilters = {
       search: '',
@@ -764,7 +774,7 @@ export default function BuyCars({
                   <motion.div 
                     key={car.id}
                     layoutId={`car-layout-${car.id}`}
-                    onClick={() => setSelectedCarDetail(car)}
+                    onClick={() => handleOpenCarDetail(car)}
                     className="bg-white border border-gray-150/80 rounded-2xl shadow-sm hover:shadow-lg transition-all overflow-hidden flex flex-col group relative cursor-pointer"
                   >
                     {/* Upper cover photo with rich interactive overlays */}
@@ -867,7 +877,10 @@ export default function BuyCars({
                           <span className="text-xl font-extrabold text-gray-900 leading-none">₹{car.price.toLocaleString('en-IN')}</span>
                         </div>
                         <button
-                          onClick={() => setSelectedCarDetail(car)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCarDetail(car);
+                          }}
                           className="px-4 py-2 bg-gray-900 hover:bg-slate-800 text-white font-bold uppercase tracking-wider text-[10px] rounded-xl transition-all cursor-pointer active:scale-95"
                         >
                           View Details
