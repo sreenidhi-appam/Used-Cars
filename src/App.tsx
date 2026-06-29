@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
@@ -25,6 +25,21 @@ import { Shield, Sparkles, MapPin, Phone, Mail, Award, CarFront, Facebook, Twitt
 export default function App() {
   // Shared inventory of cars
   const [cars, setCars] = useState<Car[]>(MOCK_CARS);
+
+  useEffect(() => {
+    const loadCars = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/cars');
+        if (!response.ok) throw new Error('Failed to fetch cars');
+        const data = await response.json();
+        setCars(data);
+      } catch (error) {
+        console.error('Could not load cars from backend:', error);
+      }
+    };
+
+    loadCars();
+  }, []);
 
   // Navigation states
   const [activeTab, setActiveTab] = useState<string>('home');
@@ -141,9 +156,21 @@ export default function App() {
               <SellCar 
                 subTab={sellSubTab} 
                 setSubTab={setSellSubTab} 
-                onAddCar={(newCar) => {
-                  setCars(prev => [newCar, ...prev]);
-                  // Reset filters to show all cars including the newly added one
+                onAddCar={async (newCar) => {
+                  try {
+                    const response = await fetch('http://localhost:5000/api/cars', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(newCar)
+                    });
+
+                    if (!response.ok) throw new Error('Unable to save car');
+                    const savedCar = await response.json();
+                    setCars(prev => [savedCar, ...prev]);
+                  } catch (error) {
+                    console.error('Could not save car to backend:', error);
+                  }
+
                   setFilters({
                     search: '',
                     minPrice: '',
@@ -155,7 +182,6 @@ export default function App() {
                     isLuxury: false,
                     brand: ''
                   });
-                  // Navigate to BuyCars tab to show the newly added car
                   setActiveTab('buy');
                 }}
               />

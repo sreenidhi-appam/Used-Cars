@@ -143,6 +143,23 @@ export default function SellCar({ subTab: propSubTab, setSubTab: propSetSubTab, 
     }, 2000);
   };
 
+  const uploadImages = async (files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('images', file));
+
+    const response = await fetch('http://localhost:5000/api/cars/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('Image upload failed');
+    }
+
+    const data = await response.json();
+    return data.urls as string[];
+  };
+
   const handleInspectionSubmission = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inspectDate || !inspectTime) {
@@ -718,14 +735,20 @@ export default function SellCar({ subTab: propSubTab, setSubTab: propSetSubTab, 
                         <div 
                           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                           onDragLeave={() => setIsDragging(false)}
-                          onDrop={(e) => {
+                          onDrop={async (e) => {
                             e.preventDefault();
                             setIsDragging(false);
                             const files = Array.from(e.dataTransfer.files) as File[];
-                            const validImgUrls = files
-                              .filter(f => f.type.startsWith('image/'))
-                              .map(f => URL.createObjectURL(f));
-                            setSellImages(prev => [...prev, ...validImgUrls]);
+                            const validFiles = files.filter(f => f.type.startsWith('image/'));
+                            if (validFiles.length === 0) return;
+
+                            try {
+                              const uploadedUrls = await uploadImages(validFiles);
+                              setSellImages(prev => [...prev, ...uploadedUrls]);
+                            } catch (error) {
+                              console.error('Upload failed:', error);
+                              alert('Image upload failed. Please try again.');
+                            }
                           }}
                           className={`border-2 border-dashed rounded-3xl p-6.5 text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
                             isDragging ? 'border-amber-500 bg-amber-500/5 ring-4 ring-amber-400/10' : 'border-gray-250 hover:bg-gray-50'
@@ -740,11 +763,19 @@ export default function SellCar({ subTab: propSubTab, setSubTab: propSetSubTab, 
                             multiple 
                             accept="image/*" 
                             className="hidden" 
-                            onChange={(e) => {
+                            onChange={async (e) => {
                               if (e.target.files) {
                                 const files = Array.from(e.target.files) as File[];
-                                const urls = files.map(f => URL.createObjectURL(f));
-                                setSellImages(prev => [...prev, ...urls]);
+                                const validFiles = files.filter(f => f.type.startsWith('image/'));
+                                if (validFiles.length === 0) return;
+
+                                try {
+                                  const uploadedUrls = await uploadImages(validFiles);
+                                  setSellImages(prev => [...prev, ...uploadedUrls]);
+                                } catch (error) {
+                                  console.error('Upload failed:', error);
+                                  alert('Image upload failed. Please try again.');
+                                }
                               }
                             }}
                           />
