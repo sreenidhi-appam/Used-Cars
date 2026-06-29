@@ -177,27 +177,38 @@ export default function App() {
                       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
                       throw new Error(`Unable to save car: ${response.status} - ${errorData.error || response.statusText}`);
                     }
-                    
-                    const savedCar = await response.json();
-                    console.log('Car saved successfully:', savedCar);
-                    setCars(prev => [savedCar, ...prev]);
+
+                    // Re-fetch the full car list so the state is always in sync
+                    // with the database and all cars are properly formatted.
+                    try {
+                      const listResponse = await fetch(`${API_BASE_URL}/api/cars`);
+                      if (listResponse.ok) {
+                        const freshCars = await listResponse.json();
+                        console.log('Refreshed cars count:', freshCars.length);
+                        setCars(freshCars);
+                      }
+                    } catch (fetchErr) {
+                      console.warn('Could not refresh car list after save:', fetchErr);
+                    }
+
+                    // Only navigate away on success
+                    setFilters({
+                      search: '',
+                      minPrice: '',
+                      maxPrice: '',
+                      bodyType: '',
+                      fuelType: '',
+                      isCertified: false,
+                      isBudget: false,
+                      isLuxury: false,
+                      brand: ''
+                    });
+                    setActiveTab('buy');
                   } catch (error) {
                     console.error('Could not save car to backend:', error);
                     alert(`Failed to save car: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    // Do NOT navigate away on failure — stay on the sell page
                   }
-
-                  setFilters({
-                    search: '',
-                    minPrice: '',
-                    maxPrice: '',
-                    bodyType: '',
-                    fuelType: '',
-                    isCertified: false,
-                    isBudget: false,
-                    isLuxury: false,
-                    brand: ''
-                  });
-                  setActiveTab('buy');
                 }}
               />
             )}
